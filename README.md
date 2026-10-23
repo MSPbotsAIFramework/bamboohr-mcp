@@ -108,30 +108,30 @@ BambooHR uses **HTTP Basic auth** with the API key as the username and a fixed p
 
 Default port: **8080** (configurable via `MCP_HTTP_PORT`).
 
-## HEADER 授权参数说明
+## HEADER Authentication Parameters
 
 In `gateway` mode (default), every `POST /mcp` request must include the following headers. Missing either one returns `401`.
 
 ### `domain`
 
-| 项目 | 说明 |
+| Item | Description |
 |------|------|
-| 类型 | string |
-| 是否必填 | 必填 |
-| 默认值 | 无 |
-| 枚举值 | 无 |
-| 字段描述 | BambooHR 公司子域（company domain），作为 URL 路径段：`.../gateway.php/{domain}/v1/...`。 |
+| Type | string |
+| Required | Yes |
+| Default | None |
+| Allowed values | None |
+| Description | BambooHR company subdomain (company domain), used as a URL path segment: `.../gateway.php/{domain}/v1/...`. |
 | Example | `acmeinc` |
 
 ### `api-key`
 
-| 项目 | 说明 |
+| Item | Description |
 |------|------|
-| 类型 | string |
-| 是否必填 | 必填 |
-| 默认值 | 无 |
-| 枚举值 | 无 |
-| 字段描述 | BambooHR API key，作为 HTTP Basic auth 的用户名（密码固定为 `mspbots`）。 |
+| Type | string |
+| Required | Yes |
+| Default | None |
+| Allowed values | None |
+| Description | BambooHR API key, used as the username for HTTP Basic auth (the password is fixed to `mspbots`). |
 | Example | `a1b2c3d4e5f6...` |
 
 ## Configuration
