@@ -1,5 +1,7 @@
 # PRD-18270 · Code review
 
+Status: frozen @ 87b5407
+
 ## Round 1 · 2026-11-13 · reviewed dev/PRD-18270 @ 245966a (base main @ d079d05)
 
 Verdict: changes requested
@@ -29,3 +31,27 @@ Gates re-run on the fixed branch (docs-only change, no source file touched):
 - README `## MSPbots Connector` section: untouched, confirmed identical to round 1 (no README edits this round).
 
 Ready for round 2 review.
+
+## Round 2 · 2026-11-13 · reviewed dev/PRD-18270 @ 87b5407 (base main @ d079d05)
+
+Verdict: approved
+
+### Findings
+
+No must-fix findings this round. Diff since round 1 (`245966a...87b5407`) touches only docs — no `src`/`tests` change — so the round 1 implementation review (tool code, tests, README connector section) still stands unchanged.
+
+Verified round 1's three must-fix items are actually resolved, not just claimed:
+1. `grep -rnP '[\x{4e00}-\x{9fff}]' --exclude-dir=.git --exclude-dir=.venv --exclude='PRD-*-review.md' .` over the whole repo -> no hits. `docs/tickets/PRD-18270.md` and `PRD-18270.ac.json` are now English throughout (spot-checked Open Questions, Self-test, Handoff sections — content and judgments read the same as the round 1 Chinese version, only the language changed).
+2. `docs/modules/README.md`, `docs/modules/bamboohr-mcp.md`, `docs/tickets-index.md` no longer exist in the tree (confirmed with `find docs -type f`); the one fact worth keeping from the removed `bamboohr-mcp.md` (TC-BTO-020's unverified response-field assumption) is present in `PRD-18270.md` (Open Questions line 68, Self-test row, Handoff "Carried-over open items").
+3. `ticket_store.py validate --ac docs/tickets/PRD-18270.ac.json` -> `ledger OK: 20 cases`; result counts unchanged from round 1 (17 pass / 2 blocked / 1 untested — reconfirmed by parsing the JSON directly), so the translation did not touch any verdict.
+
+Re-ran gates myself on `87b5407` (docs-only change, but confirming the claim rather than trusting it):
+- `uv sync -q && uv run pytest -q` -> 24 passed, same as round 1, no regression.
+- `uv run ruff check src tests` -> all checks passed.
+- README `## MSPbots Connector` section (`README.md:11-82`) diffed byte-for-byte against `~/.claude/skills/vendor-mcp-development/reference/readme-connector-section.md` -> identical (only a trailing blank line difference, not content). Untouched by this ticket.
+
+The round 1 suggestion (no `limit`/size cap on `json.dumps` for `bamboohr_list_time_off_requests`, matching the pre-existing repo-wide pattern in `employees.py`) stands as a suggestion for a separate repo-wide cleanup ticket, not a must-fix here.
+
+Carried-over, non-blocking: TC-BTO-012/014 (blocked — product has not defined `start>end` behavior or a performance SLA; implemented as pass-through to upstream per the tech design's documented assumption) and TC-BTO-020 (not executed — no real/sandbox BambooHR account on this host). Per `references/mcp-track.md` §3.2, missing a vendor test account does not block; TC-BTO-012/014 reflect an accepted design assumption, not an unresolved review finding, and round 1 did not flag them either.
+
+Ready to merge into `main`, publish to INT, and check the connector wiki.
