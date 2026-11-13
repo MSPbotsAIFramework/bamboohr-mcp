@@ -1,0 +1,298 @@
+[
+  {
+    "id": "TC-BTO-001",
+    "ac": "AC1",
+    "module": "BambooHR Time Off",
+    "priority": "P0",
+    "type": "auto",
+    "source": "dev",
+    "text": "Given valid gateway credentials are configured (domain=acmeinc, api-key=key123), When calling bamboohr_list_time_off_requests(start=\"2026-09-08\", end=\"2026-09-08\"), Then every record in the returned JSON array has readable employeeId/name/type/start/end/status/amount fields (respx mocks a fixed upstream response body to verify no field is dropped in the passthrough).",
+    "tests": [
+      "tests/test_time_off.py::test_single_day_query_passes_through_all_fields"
+    ],
+    "notes": "The mock response body's field names (employeeId/name/status.status/type.name/amount) come from BambooHR's public API docs and have not been verified against a real tenant -- see TC-BTO-020.",
+    "result": "pass",
+    "evidence": "tests/test_time_off.py::test_single_day_query_passes_through_all_fields passed; uv run pytest -> 24 passed (gate-selftest.json, 2026-09-10)"
+  },
+  {
+    "id": "TC-BTO-002",
+    "ac": "AC2",
+    "module": "BambooHR Time Off",
+    "priority": "P0",
+    "type": "auto",
+    "source": "dev",
+    "text": "Given the same credentials, When passing a full-week range start=\"2026-09-01\" end=\"2026-09-07\", Then the start/end query params sent upstream exactly match the input values, and multiple records spanning several days in the response body are all forwarded verbatim (no client-side truncation or de-duplication).",
+    "tests": [
+      "tests/test_time_off.py::test_weekly_range_query_forwards_full_range"
+    ],
+    "result": "pass",
+    "evidence": "tests/test_time_off.py::test_weekly_range_query_forwards_full_range passed; uv run pytest -> 24 passed (gate-selftest.json, 2026-09-10)"
+  },
+  {
+    "id": "TC-BTO-003",
+    "ac": "AC3",
+    "module": "BambooHR Time Off",
+    "priority": "P1",
+    "type": "auto",
+    "source": "dev",
+    "text": "Given the call passes status=\"approved\", When inspecting the actual request sent upstream, Then status=approved is forwarded verbatim in the request query (respx asserts request.url.params[\"status\"] == \"approved\"), and when status is not passed the key does not appear in the request params at all (reuses api_client._clean_params's existing behavior of dropping None).",
+    "tests": [
+      "tests/test_time_off.py::test_status_filter_forwarded_when_present",
+      "tests/test_time_off.py::test_status_omitted_when_not_passed"
+    ],
+    "result": "pass",
+    "evidence": "tests/test_time_off.py::test_status_filter_forwarded_when_present, tests/test_time_off.py::test_status_omitted_when_not_passed all passed; uv run pytest -> 24 passed (gate-selftest.json, 2026-09-10)"
+  },
+  {
+    "id": "TC-BTO-004",
+    "ac": "AC4",
+    "module": "BambooHR Time Off",
+    "priority": "P1",
+    "type": "auto",
+    "source": "dev",
+    "text": "Given the call passes employee_id=\"42\", When inspecting the actual request sent upstream, Then the request query carries employeeId=42 verbatim (the Python parameter name employee_id is mapped to BambooHR's employeeId).",
+    "tests": [
+      "tests/test_time_off.py::test_employee_id_filter_maps_to_employeeId_param"
+    ],
+    "result": "pass",
+    "evidence": "tests/test_time_off.py::test_employee_id_filter_maps_to_employeeId_param passed; uv run pytest -> 24 passed (gate-selftest.json, 2026-09-10)"
+  },
+  {
+    "id": "TC-BTO-005",
+    "ac": "AC5",
+    "module": "BambooHR Time Off",
+    "priority": "P0",
+    "type": "auto",
+    "source": "dev",
+    "text": "Given a gateway-mode POST /mcp request with neither the domain nor the api-key header set, When calling tools/call on any tool (including this one), Then GatewayCredsMiddleware returns 401 before reaching the tool code, and the response body's missing_headers includes [\"domain\",\"api-key\"] (reuses test_middleware.py's existing assertion pattern, swapping in this tool's name).",
+    "tests": [
+      "tests/test_time_off.py::test_missing_both_headers_returns_401_before_tool_runs"
+    ],
+    "result": "pass",
+    "evidence": "tests/test_time_off.py::test_missing_both_headers_returns_401_before_tool_runs passed; uv run pytest -> 24 passed (gate-selftest.json, 2026-09-10)"
+  },
+  {
+    "id": "TC-BTO-006",
+    "ac": "AC5",
+    "module": "BambooHR Time Off",
+    "priority": "P1",
+    "type": "auto",
+    "source": "dev",
+    "text": "Given env mode with BAMBOOHR_DOMAIN/BAMBOOHR_API_KEY unset (Settings(auth_mode=\"env\") with both empty), When calling bamboohr_list_time_off_requests(start=\"2026-09-08\", end=\"2026-09-08\"), Then client_factory() returns None and the tool returns the fixed text \"Error: No BambooHR credentials configured...\" (verbatim match with employees.py's _NO_CREDS constant), without raising an uncaught exception.",
+    "tests": [
+      "tests/test_time_off.py::test_env_mode_missing_credentials_returns_no_creds_text"
+    ],
+    "result": "pass",
+    "evidence": "tests/test_time_off.py::test_env_mode_missing_credentials_returns_no_creds_text passed; uv run pytest -> 24 passed (gate-selftest.json, 2026-09-10)"
+  },
+  {
+    "id": "TC-BTO-007",
+    "ac": "AC6",
+    "module": "BambooHR Time Off",
+    "priority": "P1",
+    "type": "auto",
+    "source": "dev",
+    "text": "Given respx mocks GET /time_off/requests returning 400 with body {\"message\":\"invalid start date\"}, When calling this tool, Then the returned text starts with \"Error: BambooHR API error 400\" and includes \"invalid start date\", without raising an uncaught exception or returning an empty result that pretends to succeed.",
+    "tests": [
+      "tests/test_time_off.py::test_upstream_400_forwarded_verbatim"
+    ],
+    "result": "pass",
+    "evidence": "tests/test_time_off.py::test_upstream_400_forwarded_verbatim passed; uv run pytest -> 24 passed (gate-selftest.json, 2026-09-10)"
+  },
+  {
+    "id": "TC-BTO-008",
+    "ac": "AC6",
+    "module": "BambooHR Time Off",
+    "priority": "P1",
+    "type": "auto",
+    "source": "dev",
+    "text": "Given respx mocks GET /time_off/requests returning 401 (api-key invalid upstream), When calling this tool, Then the returned text includes the 401 status code and the upstream error description, forwarded the same way as the 400 branch rather than swallowed.",
+    "tests": [
+      "tests/test_time_off.py::test_upstream_401_forwarded"
+    ],
+    "result": "pass",
+    "evidence": "tests/test_time_off.py::test_upstream_401_forwarded passed; uv run pytest -> 24 passed (gate-selftest.json, 2026-09-10)"
+  },
+  {
+    "id": "TC-BTO-009",
+    "ac": "AC6",
+    "module": "BambooHR Time Off",
+    "priority": "P2",
+    "type": "auto",
+    "source": "dev",
+    "text": "Given respx mocks GET /time_off/requests returning 403 with header X-BambooHR-Error-Message: \"Access denied for this report\", When calling this tool, Then the returned text includes \"Access denied for this report\" (reuses api_client._raise_for_status's existing logic for reading that header).",
+    "tests": [
+      "tests/test_time_off.py::test_upstream_403_includes_reason_header"
+    ],
+    "result": "pass",
+    "evidence": "tests/test_time_off.py::test_upstream_403_includes_reason_header passed; uv run pytest -> 24 passed (gate-selftest.json, 2026-09-10)"
+  },
+  {
+    "id": "TC-BTO-010",
+    "ac": "AC7",
+    "module": "BambooHR Time Off",
+    "priority": "P2",
+    "type": "auto",
+    "source": "dev",
+    "text": "Given respx mocks GET /time_off/requests returning 200 with an empty array [] as the body, When calling this tool, Then the return value is text that parses back to [] via json.loads -- not an error message, not null.",
+    "tests": [
+      "tests/test_time_off.py::test_empty_result_returns_empty_array_not_error"
+    ],
+    "result": "pass",
+    "evidence": "tests/test_time_off.py::test_empty_result_returns_empty_array_not_error passed; uv run pytest -> 24 passed (gate-selftest.json, 2026-09-10)"
+  },
+  {
+    "id": "TC-BTO-011",
+    "ac": "AC8",
+    "module": "BambooHR Time Off - multi-tenant isolation",
+    "priority": "P0",
+    "type": "auto",
+    "source": "dev",
+    "text": "Given two distinct Settings (tenant-a: domain=tenanta, api-key=keyA; tenant-b: domain=tenantb, api-key=keyB) calling bamboohr_list_time_off_requests concurrently via asyncio.gather, with respx mocking a different fixed response body per domain (tenanta returns the record with employeeId=1, tenantb returns the record with employeeId=2), When the concurrent results come back, Then tenant-a's call only gets the employeeId=1 record and tenant-b's call only gets the employeeId=2 record, with no cross-contamination (assert each gather result matches its own mock).",
+    "tests": [
+      "tests/test_time_off.py::test_concurrent_calls_do_not_leak_credentials_across_tenants"
+    ],
+    "notes": "This repo had no prior concurrency test to follow; the approach is to use contextvars.copy_context() or simply construct two independent Settings + client_factory pairs and call them via asyncio.gather, with no dependency on real network access. This case verifies the per-request contextvars isolation itself, not gateway-side tenant authentication (that isolation is implemented separately in mcp-service-gateway, out of scope for this repo).",
+    "result": "pass",
+    "evidence": "tests/test_time_off.py::test_concurrent_calls_do_not_leak_credentials_across_tenants passed; uv run pytest -> 24 passed (gate-selftest.json, 2026-09-10)"
+  },
+  {
+    "id": "TC-BTO-012",
+    "ac": "",
+    "module": "BambooHR Time Off - boundary",
+    "priority": "P2",
+    "type": "manual",
+    "source": "dev",
+    "text": "[INCOMPLETE requirement] Given start is later than end (e.g. start=\"2026-09-10\" end=\"2026-09-01\"), When calling this tool, Then -",
+    "steps": [
+      "1) Call bamboohr_list_time_off_requests(start=\"2026-09-10\", end=\"2026-09-01\") against a test BambooHR account or respx mock",
+      "2) Record the returned behavior (a local error, an upstream error, or upstream treating it as an empty range and returning [])"
+    ],
+    "expect": "- (requirement incomplete, no judgeable expected result yet)",
+    "result": "blocked",
+    "notes": "Neither the product design nor the original ticket defines the expected behavior when start > end; the current implementation does no local date-order validation and forwards the values upstream as-is. Missing product decision: should this input be rejected locally, or allowed through to the upstream for it to handle?",
+    "evidence": "[INCOMPLETE requirement] -- product has not defined the expected behavior for start > end; not judged this round, not counted as a failure per SOP, left pending product follow-up."
+  },
+  {
+    "id": "TC-BTO-013",
+    "ac": "AC6",
+    "module": "BambooHR Time Off - boundary",
+    "priority": "P2",
+    "type": "auto",
+    "source": "dev",
+    "text": "Given start is passed as a string that is not YYYY-MM-DD (e.g. \"09/08/2026\"), with respx mocking a matching 400 response body {\"message\":\"start is not a valid date\"}, When calling this tool, Then the 400 and its error description are forwarded verbatim the same way as TC-BTO-007 (the tool does no local date-format validation, so this is just another input equivalence class of AC6).",
+    "tests": [
+      "tests/test_time_off.py::test_malformed_date_format_forwarded_as_upstream_400"
+    ],
+    "result": "pass",
+    "evidence": "tests/test_time_off.py::test_malformed_date_format_forwarded_as_upstream_400 passed; uv run pytest -> 24 passed (gate-selftest.json, 2026-09-10)"
+  },
+  {
+    "id": "TC-BTO-014",
+    "ac": "",
+    "module": "BambooHR Time Off - performance",
+    "priority": "P2",
+    "type": "manual",
+    "source": "dev",
+    "text": "[INCOMPLETE requirement] Given neither the ticket nor the product design gives a concurrency/response-time SLA, When this tool needs a performance acceptance check, Then -",
+    "steps": [
+      "1) Confirm with product whether this tool has an explicit latency/concurrency target (current judgment: a low-frequency read-only tool triggered by daily/weekly SOPs, not on the user-interactive path, likely does not need a strict SLA)",
+      "2) If there is no SLA requirement, record this item only as a known gap that does not block delivery"
+    ],
+    "expect": "- (requirement incomplete, no SLA to judge against)",
+    "result": "blocked",
+    "notes": "Missing product decision: this tool's call frequency / concurrency level / acceptable latency. Based on current usage (daily/weekly SOP-triggered, not real-time user interaction) this is judged low priority and does not block design progress, but needs to be surfaced explicitly in Open Questions.",
+    "evidence": "[INCOMPLETE requirement] -- product has not given a performance SLA; not judged this round, not counted as a failure per SOP, left pending product confirmation of whether one is needed."
+  },
+  {
+    "id": "TC-BTO-015",
+    "ac": "AC6",
+    "module": "BambooHR Time Off - security",
+    "priority": "P1",
+    "type": "auto",
+    "source": "dev",
+    "text": "Given the employee_id parameter is passed as \"1' OR '1'='1\" (a SQL-injection-shaped string) and the status parameter as \"<script>alert(1)</script>\" (an XSS-shaped string), When calling this tool, Then both values are placed into the upstream HTTP query parameters as plain strings verbatim (there is no local SQL/DOM execution context; respx asserts the parameter values in the request URL exactly match the input strings, unmodified by any local interpretation), and no uncaught local exception is raised.",
+    "tests": [
+      "tests/test_time_off.py::test_injection_like_params_are_passed_through_as_literal_strings"
+    ],
+    "notes": "This tool has no local database and no HTML rendering; in theory the injection surface, if any, lives entirely on the upstream BambooHR side. What this case verifies is the boundary that \"local code performs no dangerous interpretation of the parameters,\" not whether the upstream itself is secure.",
+    "result": "pass",
+    "evidence": "tests/test_time_off.py::test_injection_like_params_are_passed_through_as_literal_strings passed; uv run pytest -> 24 passed (gate-selftest.json, 2026-09-10)"
+  },
+  {
+    "id": "TC-BTO-016",
+    "ac": "",
+    "module": "BambooHR Time Off - security",
+    "priority": "P3",
+    "type": "manual",
+    "source": "dev",
+    "text": "Not applicable: this tool is a pure read-only GET endpoint with no write/update fields at all, so there is no Mass Assignment (client overriding server-computed fields) attack surface.",
+    "steps": [
+      "No execution needed -- recorded as not-applicable with a reason, so the blank is not misread as an oversight"
+    ],
+    "expect": "Not applicable, no execution needed",
+    "result": "pass",
+    "notes": "The OWASP API Top 10 Mass Assignment anchor does not apply to this tool; see text for why.",
+    "evidence": "Confirmed not applicable (not a failure): this tool is a pure read-only GET endpoint with no write/update fields; code review confirms there is no Mass Assignment attack surface, no execution needed."
+  },
+  {
+    "id": "TC-BTO-017",
+    "ac": "",
+    "module": "BambooHR Time Off - boundary",
+    "priority": "P2",
+    "type": "auto",
+    "source": "dev",
+    "text": "Given time_off_type_id or status is passed an enum value the upstream does not define (e.g. status=\"bogus_status\"), and this tool performs no local enum validation, When calling this tool, Then the value is forwarded verbatim in the upstream query parameters (respx asserts the request parameters); how the upstream handles an invalid enum (400 or ignore) is covered by the TC-BTO-007/TC-BTO-010 branches -- this case only verifies the behavior itself that local code does no validation and does no silent rewriting.",
+    "tests": [
+      "tests/test_time_off.py::test_unknown_enum_value_forwarded_unvalidated"
+    ],
+    "result": "pass",
+    "evidence": "tests/test_time_off.py::test_unknown_enum_value_forwarded_unvalidated passed; uv run pytest -> 24 passed (gate-selftest.json, 2026-09-10)"
+  },
+  {
+    "id": "TC-BTO-018",
+    "ac": "",
+    "module": "BambooHR Time Off - boundary",
+    "priority": "P1",
+    "type": "auto",
+    "source": "dev",
+    "text": "Given a call to mcp.call_tool(\"bamboohr_list_time_off_requests\", {\"end\": \"2026-09-08\"}) (missing the required start parameter), When the call is triggered, Then FastMCP returns a parameter-validation error before ever entering the tool function body (no upstream HTTP request is actually made -- respx asserts route.calls is empty).",
+    "tests": [
+      "tests/test_time_off.py::test_missing_required_start_param_rejected_before_upstream_call"
+    ],
+    "result": "pass",
+    "evidence": "tests/test_time_off.py::test_missing_required_start_param_rejected_before_upstream_call passed; uv run pytest -> 24 passed (gate-selftest.json, 2026-09-10)"
+  },
+  {
+    "id": "TC-BTO-019",
+    "ac": "",
+    "module": "BambooHR Time Off - boundary",
+    "priority": "P1",
+    "type": "auto",
+    "source": "dev",
+    "text": "Given a call to mcp.call_tool(\"bamboohr_list_time_off_requests\", {\"start\": \"2026-09-08\"}) (missing the required end parameter), When the call is triggered, Then it is rejected before the tool function body runs symmetrically to TC-BTO-018, with no upstream request sent.",
+    "tests": [
+      "tests/test_time_off.py::test_missing_required_end_param_rejected_before_upstream_call"
+    ],
+    "result": "pass",
+    "evidence": "tests/test_time_off.py::test_missing_required_end_param_rejected_before_upstream_call passed; uv run pytest -> 24 passed (gate-selftest.json, 2026-09-10)"
+  },
+  {
+    "id": "TC-BTO-020",
+    "ac": "AC1",
+    "module": "BambooHR Time Off - real environment verification",
+    "priority": "P0",
+    "type": "manual",
+    "source": "dev",
+    "text": "Given a real (or BambooHR-provided sandbox) company account's domain + api-key, When actually calling GET /time_off/requests with that credential (either curl the upstream directly, or make one real call through this tool), Then the response body can indeed be read to have employeeId, name (employee name), type.name (leave type), start, end, status.status, and amount fields -- the response fields assumed in the tech design come from BambooHR's public API docs and have not yet been verified against a real account for this org.",
+    "steps": [
+      "1) Use the domain and api-key of a real/sandbox BambooHR account known to have time-off records",
+      "2) curl -u \"<api-key>:mspbots\" \"https://api.bamboohr.com/api/gateway.php/<domain>/v1/time_off/requests?start=<a date with a record>&end=<end date with a record>\" -H \"Accept: application/json\"",
+      "3) Check whether every record in the returned JSON array includes the employeeId/name/type.name/start/end/status.status/amount fields, and record the actual field names if they differ from the assumption"
+    ],
+    "expect": "The response fields cover the six items listed in the ticket's \"Minimum response fields needed\" (employee name/employee ID/leave type/start-end dates/status/duration); if the actual field names differ from this design's assumption, the tech design section 5 field mapping needs to be revised before merging.",
+    "result": "untested",
+    "notes": "This is the only case that requires a real upstream account; all other 19 cases can run fully with respx mocks locally/in CI. Recommend running this case first, as soon as real credentials are available, during the dev leg's self-test step, to surface early whether the assumption holds.",
+    "evidence": "Not executed - local blind spot - requires the domain+api-key of a real or BambooHR official sandbox company account; this host/this round's self-test environment had no usable credentials, so the upstream real response body's assumed field names (employeeId/name/type.name/start/end/status.status/amount, all taken from the public API docs) could not be verified against a real tenant. Both the tech design and product design flag this assumption as unverified in their Open Questions/Risks; recommend that someone with real BambooHR sandbox credentials run this once before merging into int."
+  }
+]
